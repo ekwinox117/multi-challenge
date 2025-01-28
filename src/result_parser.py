@@ -44,7 +44,7 @@ class ResultParser:
             }
         }
     
-    def save_raw_output(self, output_file: str, conversations: List, responses: Dict, k: int):
+    def save_raw_output(self, output_file: str, conversations: List, responses: Dict, attempts: int):
         """Save detailed raw output including all conversations, responses, and evaluations to a CSV file."""
         with open(output_file, 'w', newline='', encoding='utf-8') as csvfile:
             fieldnames = ['question_id', 'axis', 'original_conversation', 'target_question', 'pass_criteria', 
@@ -60,7 +60,7 @@ class ResultParser:
             # Process each conversation
             for conv in conversations:
                 question_id = conv.question_id
-                conv_responses = responses.get(question_id, ['N/A'] * k)  # Default to 'N/A' if no responses
+                conv_responses = responses.get(question_id, ['N/A'] * attempts)  # Default to 'N/A' if no responses
                 conv_results = results_by_question.get(question_id, [])
 
                 # Prepare the original conversation
@@ -69,7 +69,7 @@ class ResultParser:
                 passed_attempts = sum(1 for result in conv_results if result.get('passed', False))
                 final_result = 'PASS' if passed_attempts > 0 else 'FAIL'
 
-                for i in range(k):
+                for i in range(attempts):
                     result = conv_results[i] if i < len(conv_results) else {}
                     writer.writerow({
                         'question_id': question_id,
@@ -82,5 +82,5 @@ class ResultParser:
                         'judge_verdict': result.get('verdict', 'N/A'),
                         'passed': 'PASSED' if result.get('passed', False) else 'FAILED',
                         'reasoning': result.get('reasoning', 'N/A'),
-                        'final_result': f"{final_result} ({passed_attempts}/{k} attempts passed)"
+                        'final_result': f"{final_result} ({passed_attempts}/{attempts} attempts passed)"
                     })

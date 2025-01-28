@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from concurrent.futures import ThreadPoolExecutor
 from typing import List, Dict, Tuple, Any, Literal
-from src.models.litellm import LiteLLMModel
+from src.models.openai import OpenAIModel
 from tqdm import tqdm
 
 class JudgeResponse(BaseModel):
@@ -27,7 +27,7 @@ class Evaluator:
     def __init__(self, conversations: List[Any], responses: Dict[int, List[str]]):
         self.conversations = conversations
         self.responses = responses
-        self.evaluation_model = LiteLLMModel(
+        self.evaluation_model = OpenAIModel(
             model_path="gpt-4o-2024-08-06", 
             temp=0, 
             max_tokens=4096,
@@ -43,9 +43,9 @@ class Evaluator:
         judgement = self.evaluation_model.generate([{"role": "user", "content": prompt}])
         return i, conversation.axis, judgement.reasoning, judgement.verdict, pass_criteria
 
-    def evaluate(self) -> List[Dict]:
+    def evaluate(self, max_workers:int = 1) -> List[Dict]:
         """Evaluate all responses for each conversation"""
-        with ThreadPoolExecutor() as executor:
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = []
             for i, convo in enumerate(self.conversations):
                 if convo.question_id not in self.responses:

@@ -29,8 +29,12 @@ def main():
                         help="Specify the model provider for generating responses.")
     parser.add_argument('--provider-args', type=str, nargs='*',
                         help="Provider-specific arguments in key=value format.")
-    parser.add_argument('--k', type=int, default=1,
-                        help="Number of attempts to generate for each conversation (pass@k)")
+    parser.add_argument('--attempts', type=int, default=1,
+                        help="Number of attempts to generate for each conversation")
+    parser.add_argument('--max-workers_response_gen', type=int, default=1,
+                        help="Number of parallel workers to use for response generation.")
+    parser.add_argument('--max-workers_eval', type=int, default=1,
+                        help="Number of parallel workers to use for evaluation.")
     parser.add_argument('--raw', type=str,
                         help="Path to save detailed raw output including all responses and evaluations")
 
@@ -44,7 +48,7 @@ def main():
         # Ensure the directory exists
         os.makedirs(os.path.dirname(args.raw), exist_ok=True)
 
-    input_file = 'multi-challenge/data/benchmark_questions.jsonl'
+    input_file = './data/benchmark_questions.jsonl'
 
     data_loader = DataLoader(input_file)
     data_loader.load_data()
@@ -57,20 +61,20 @@ def main():
         
         provider_args = parse_provider_args(args.provider_args)
         model_provider = ModelFactory.get_provider(args.model_provider, **provider_args)
-        data_loader.generate_responses(model_provider, k=args.k)
+        data_loader.generate_responses(model_provider, attempts=args.attempts, max_workers = args.max_workers_response_gen)
     
     responses = data_loader.get_responses()
     conversations = data_loader.get_conversations()
 
     evaluator = Evaluator(conversations, responses)
-    evaluation_results = evaluator.evaluate()
+    evaluation_results = evaluator.evaluate(max_workers=args.max_workers_eval)
 
     parser = ResultParser(evaluation_results)
     scores = parser.calculate_scores()
 
     # Save summary scores
     with open(args.output_file, 'w') as f:
-        f.write(f"Pass@{args.k} Overall Score: {scores['overall_score']:.2f}%\n")
+        f.write(f"Attempts: {args.attempts} Overall Score: {scores['overall_score']:.2f}%\n")
         f.write("\nAxis Scores:\n")
         for axis, score in scores['axis_scores'].items():
             f.write(f"{axis}: {score:.2f}%\n")
@@ -81,7 +85,7 @@ def main():
             output_file=args.raw,
             conversations=conversations,
             responses=responses,
-            k=args.k
+            attempts=args.attempts
         )
 
     print(f"Evaluation complete. Results saved to {args.output_file}")

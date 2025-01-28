@@ -36,12 +36,12 @@ class DataLoader:
                 }
         return self.responses
 
-    def generate_responses(self, model_provider: ModelProvider, k: int = 1) -> Dict[int, List[str]]:
+    def generate_responses(self, model_provider: ModelProvider, attempts: int = 1, max_workers: int = 1) -> Dict[int, List[str]]:
         """Generate k responses for each conversation using the provided model provider in parallel."""
 
         def generate_conversation_responses(conversation):
             responses = []
-            for _ in range(k):
+            for _ in range(attempts):
                 try:
                     response = model_provider.generate(conversation.conversation)
                     responses.append(response)
@@ -50,7 +50,7 @@ class DataLoader:
                     responses.append(f"Error generating response for question_id {conversation.question_id}: {str(e)}.\n FAIL THIS QUESTION")
             return conversation.question_id, responses
 
-        with ThreadPoolExecutor(max_workers=50) as executor:
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = [
                 executor.submit(generate_conversation_responses, conversation)
                 for conversation in self.conversations
